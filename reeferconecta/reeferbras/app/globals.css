@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1F2937;
+  --foreground: #ededed;
+}
+
+html[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #0f172a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Tema claro: reaproveita as classes utilitárias escuras já usadas nas páginas,
+   invertendo fundo/texto/borda sem precisar reescrever cada componente. */
+html[data-theme="light"] .bg-gray-900,
+html[data-theme="light"] .bg-gray-800,
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-slate-800 {
+  background-color: #ffffff !important;
+}
+
+html[data-theme="light"] .bg-gray-900\/70,
+html[data-theme="light"] .bg-slate-900\/70,
+html[data-theme="light"] .bg-gray-800\/60,
+html[data-theme="light"] .bg-gray-800\/70,
+html[data-theme="light"] .bg-gray-800\/50,
+html[data-theme="light"] .bg-gray-950\/50 {
+  background-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .text-slate-200,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-gray-200,
+html[data-theme="light"] .text-gray-300,
+html[data-theme="light"] .text-gray-400 {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .text-red-300 {
+  color: #b91c1c !important;
+}
+
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-slate-600,
+html[data-theme="light"] .border-white\/10 {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .outline-white\/10 {
+  outline-color: #cbd5e1 !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select,
+button {
+  max-width: 100%;
+}
+
+label,
+p,
+legend,
+th,
+td,
+h1,
+h2,
+h3 {
+  overflow-wrap: anywhere;
+}
+
+input,
+textarea {
+  cursor: text;
+  caret-color: #0369a1;
+}
+
+select,
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

@@ -1,0 +1,41 @@
+{
+  "name": "reeferconecta",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.2.1",
+    "bcryptjs": "^3.0.3",
+    "better-auth": "^1.7.2",
+    "dotenv": "^17.4.2",
+    "googleapis": "^176.0.0",
+    "jsbarcode": "^3.12.3",
+    "mongodb": "^7.6.0",
+    "next": "^16.3.5",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "redis": "^6.2.1",
+    "svg-to-pdfkit": "^0.1.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/jsbarcode": "^3.11.4",
+    "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/svg-to-pdfkit": "^0.1.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

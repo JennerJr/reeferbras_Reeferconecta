@@ -1,0 +1,184 @@
+[
+    {
+    "Região" : "Norte",
+    "Localidade" : "Manaus/AM",
+    "funcionario" : ["Leoncio", "Raildo"]
+    },
+
+    {
+        "Região" : "Norte",
+        "Localidade" : "Belém/PA",
+        "funcionario" : ["Leoncio"]
+    },
+
+    {
+        "Região" : "Sul",
+        "Localidade" : "Paranaguá/PR",
+        "funcionario" : ["Leandro"]
+    },
+
+    {
+        "Região" : "Sul",
+        "Localidade" : "Itajaí/SC",
+        "funcionario" : ["Darlan"]
+    },
+
+    {
+        "Região" :"Sul",
+        "Localidade": "Itapoa/SC",
+        "funcionario" : ["Helio"]
+    },
+
+    {
+        "Região" : "Sul",
+        "Localidade": "Cambé/PR",
+        "funcionario" : ["Joesley"]
+    },
+
+    {
+        "Região" : "Sul",
+        "Localidade": "Cascavel/PR",
+        "funcionario" : ["Marcio Severi"]
+    },
+
+    {
+        "Região" : "Sul",
+        "Localidade": "Rio Grande/RS",
+        "funcionario" : ["Willian"]
+    },
+
+    {
+        "Região" : "Nordeste",
+        "Localidade": "Caucaia/CE",
+        "funcionario": ["Mauro"]
+    },
+
+    {
+        "Região" : "Nordeste",
+        "Localidade": "Salvador/BA",
+        "funcionario": ["Adriano"]
+    },
+
+    {
+        "Região" : "Nordeste",
+        "Localidade":"Suape/PE",
+        "funcionario": ["Fabio Costa"]
+    },
+
+    {
+        "Região" : "Nordeste",
+        "Localidade": "Petrolina/PE",
+        "funcionario": ["Nielton"]
+    },
+
+    {
+        "Região" : "Nordeste",
+        "Localidade": "Natal/RN",
+        "funcionario": ["Thiago"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Vitoria/ES",
+        "funcionario" : ["Murilo", "Richarlysson"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Rio de Janeiro/RJ",
+        "funcionario" : ["David Collantini"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Itaguai/RJ",
+        "funcionario" : ["Andre Costa"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Lins/SP",
+        "funcionario" : ["Joesley", "Rogelio"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Realreefer/SP",
+        "funcionario" : ["Wladimir", "Clayton", "David Lucas"]
+    },
+
+    
+     {
+        "Região" : "Sudeste",
+        "Localidade": "Transtec Santos/SP",
+        "funcionario" : ["Elton", "Guilherme"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Atendimento Santos/SP",
+        "funcionario" : [
+        "Chico",
+        "Jorge Eduardo",
+         "Sillas",
+         "Alexandre",
+         "Armando",
+         "Luis Felipe",
+         "Rosandro",
+         "Renan",
+         "Rodrigo Hipólito",
+        "Henrique"]
+    },
+    {
+        "Região": "Sudeste",
+        "Localidade": "Guarujá/SP - ",
+        "funcionario": ["Sergio",
+                        "Germano",
+                        "Erivelto",
+                        "Everthon",
+                        "Jardel",
+                        "Bruno",
+                        "Michael",
+                        "Ivo",
+                        "Alvaro",
+                        "Luan"]
+    },
+    {
+        "Região": "Sudeste",
+        "Localidade": "Realreefer PG/SP",
+        "funcionario": ["André Costa(Perninha)",
+                        "Alexandre perereira(Boca)",
+                        "Adriano(Bigode)"]
+    },
+
+    {
+        "Região" : "Sudeste",
+        "Localidade": "Transtec PG/SP",
+        "funcionario" : ["Joao", "Maria"]
+    },
+    
+    
+    {
+        "Região" : "Centro Oeste",
+        "Localidade": "Sinop/MT",
+        "funcionario" : ["Alex Rocha"]
+    },
+
+    {
+        "Região" : "Centro Oeste",
+        "Localidade": "Campo Grande/MS",
+        "funcionario" : ["Abraão"]
+    },
+
+    {
+        "Região" : "Centro Oeste",
+        "Localidade": "Nova Mutum/MT",
+        "funcionario" : ["Rangel"]
+    },
+
+    {
+        "Região":"Centro Oeste",
+        "Localidade": "Rondonopolis/MT",
+        "funcionario" : ["Robson Generoso"]
+    }
+]

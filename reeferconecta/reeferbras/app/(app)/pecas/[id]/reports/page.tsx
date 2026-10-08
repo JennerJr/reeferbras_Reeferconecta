@@ -1,0 +1,152 @@
+"use client";
+
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
+import { canDeleteAnyReport, canManagePieces } from "@/lib/authorization";
+
+type PageProps = { params: Promise<{ id: string }> };
+
+type RepairReport = {
+  id: string;
+  responsavelReparo: string;
+  descricaoReparo: string;
+  situacaoAtual: string;
+  resistencia?: string;
+  surge?: string;
+  mega?: string;
+  simulador?: string;
+  corrente?: string;
+  transformador?: string;
+  inspeçãoVisual?: string;
+  ordemServico?: string;
+  serialNumberReport?: string;
+  estatorTrocado?: string;
+  scroll?: string;
+  reparoFalange?: string;
+  analiseMecanica?: string;
+  testeFuncionamento?: string;
+  outroTesteFuncionamento?: string;
+  createdAt: string;
+};
+
+type Piece = {
+  id: number | string;
+  nome?: string;
+  fabricante?: string;
+  qc?: string;
+  situacaoAtual?: string;
+  reports?: RepairReport[];
+};
+
+export default function PieceReportsPage({ params }: PageProps) {
+  const { id } = use(params);
+  const [piece, setPiece] = useState<Piece | null>(null);
+  const [role, setRole] = useState<string>();
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((response) => response.json())
+      .then((data) => {
+        setRole(data.user?.role);
+        setCurrentUserName(data.user?.name ?? "");
+      })
+      .catch(() => undefined);
+
+    fetch("/api/pecas?reports=visible")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.erro ?? "Não foi possível carregar a peça.");
+        const pieces: Piece[] = Array.isArray(data) ? data : (data.data ?? data.pecas ?? data.dados ?? []);
+        const found = pieces.find((item) => String(item.id) === String(id));
+        if (!found) throw new Error("Peça não encontrada.");
+        setPiece(found);
+      })
+      .catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Erro ao carregar relatórios."));
+  }, [id]);
+
+  function canDeleteReport(report: RepairReport) {
+    const isOwner = report.responsavelReparo?.trim().toLowerCase() === currentUserName.trim().toLowerCase();
+    return canDeleteAnyReport(role) || isOwner;
+  }
+
+  async function deleteReport(report: RepairReport) {
+    if (!window.confirm("Tem certeza que deseja excluir este relatório? Essa ação não pode ser desfeita.")) return;
+    setDeletingId(report.id);
+    setDeleteError("");
+    try {
+      const response = await fetch(`/api/pecas/${id}/reports?reportId=${encodeURIComponent(report.id)}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.erro ?? "Não foi possível excluir o relatório.");
+      setPiece((current) => current ? { ...current, reports: current.reports?.filter((item) => item.id !== report.id) } : current);
+    } catch (requestError) {
+      setDeleteError(requestError instanceof Error ? requestError.message : "Não foi possível excluir o relatório.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (error) return <main className="mx-auto max-w-3xl px-4 py-8 text-red-700 sm:px-6 sm:py-10">{error}</main>;
+  if (!piece) return <main className="mx-auto max-w-3xl px-4 py-8 text-white sm:px-6 sm:py-10">Carregando...</main>;
+
+  return (
+    <main className="min-h-screen px-4 py-8 text-slate-900 sm:px-6 sm:py-10">
+      <section className="mx-auto max-w-3xl">
+        <Link className="text-sm font-semibold text-sky-700" href="/pecas">← Voltar para peças</Link>
+        <h1 className="mt-4 text-3xl font-bold text-white">Relatórios da peça</h1>
+        <p className="mt-2 text-slate-300">{piece.nome || "Peça sem nome"} {piece.fabricante ? `· ${piece.fabricante}` : ""} · QC: {piece.qc || "Não informado"}</p>
+
+        <nav className="mt-6 flex flex-wrap gap-2 border-b border-slate-600 pb-2" aria-label="Navegação da peça">
+          <Link className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-500" href={`/pecas/${id}`}>Dados da peça</Link>
+          <Link className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white" href={`/pecas/${id}/reports`}>Relatórios ({piece.reports?.length ?? 0})</Link>
+        </nav>
+
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Histórico de relatórios</h2>
+              <p className="mt-1 text-sm text-slate-500">Situação atual: {piece.situacaoAtual || "Não informada"}</p>
+            </div>
+            {(canManagePieces(role) || role === "cereco" || role === "lab.elétrica") && <Link className="rounded-lg bg-red-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-red-800" href={`/reports/novo${piece.qc ? `?qc=${encodeURIComponent(piece.qc)}` : ""}`}>Novo relatório</Link>}
+          </div>
+          {deleteError && <p className="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">{deleteError}</p>}
+          {!piece.reports?.length ? <p className="mt-6 text-slate-600">Nenhum relatório registrado.</p> : (
+            <div className="mt-6 grid gap-4">
+              {piece.reports.map((report) => <article className="rounded-lg border border-slate-200 p-4" key={report.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <p><strong>Responsável:</strong> {report.responsavelReparo}</p>
+                  {canDeleteReport(report) && (
+                    <button className="text-sm font-semibold text-red-700 hover:text-red-900 disabled:opacity-50" type="button" disabled={deletingId === report.id} onClick={() => deleteReport(report)}>{deletingId === report.id ? "Excluindo..." : "Excluir"}</button>
+                  )}
+                </div>
+                <p><strong>Situação:</strong> {report.situacaoAtual}</p>
+                {(report.resistencia || report.surge || report.mega || report.simulador || report.corrente || report.transformador || report.inspeçãoVisual || report.ordemServico || report.serialNumberReport || report.estatorTrocado || report.scroll || report.reparoFalange || report.analiseMecanica || report.testeFuncionamento || report.outroTesteFuncionamento) && <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {report.resistencia && <p><strong>Resistência:</strong> {report.resistencia}</p>}
+                  {report.surge && <p><strong>Surge:</strong> {report.surge}</p>}
+                  {report.mega && <p><strong>Mega:</strong> {report.mega}</p>}
+                  {report.simulador && <p><strong>Simulador:</strong> {report.simulador}</p>}
+                  {report.corrente && <p><strong>Corrente:</strong> {report.corrente}</p>}
+                  {report.transformador && <p><strong>Transformador:</strong> {report.transformador}</p>}
+                  {report.inspeçãoVisual && <p><strong>Inspeção visual:</strong> {report.inspeçãoVisual}</p>}
+                  {report.ordemServico && <p><strong>Ordem de serviço:</strong> {report.ordemServico}</p>}
+                  {report.serialNumberReport && <p><strong>Serial number:</strong> {report.serialNumberReport}</p>}
+                  {report.estatorTrocado && <p><strong>Estator trocado:</strong> {report.estatorTrocado}</p>}
+                  {report.scroll && <p><strong>SCROLL:</strong> {report.scroll}</p>}
+                  {report.reparoFalange && <p><strong>Reparo da falange:</strong> {report.reparoFalange}</p>}
+                  {report.analiseMecanica && <p><strong>Análise mecânica:</strong> {report.analiseMecanica}</p>}
+                  {report.testeFuncionamento && <p><strong>Teste de funcionamento:</strong> {report.testeFuncionamento}</p>}
+                  {report.outroTesteFuncionamento && <p><strong>Outro teste:</strong> {report.outroTesteFuncionamento}</p>}
+                </div>}
+                {report.descricaoReparo && <p className="mt-2 whitespace-pre-wrap"><strong>Descrição:</strong> {report.descricaoReparo}</p>}
+                <p className="mt-2 text-sm text-slate-500">{new Date(report.createdAt).toLocaleString("pt-BR")}</p>
+              </article>)}
+            </div>
+          )}
+        </section>
+      </section>
+    </main>
+  );
+}

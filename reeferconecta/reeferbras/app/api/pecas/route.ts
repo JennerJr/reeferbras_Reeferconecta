@@ -1,0 +1,318 @@
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
+import { getSessionUser } from "@/lib/auth-session";
+import { canDeletePecas, canManagePieces } from "@/lib/authorization";
+import { getSetorForComponente, normalizeSetor } from "@/lib/catalog";
+import { getCustomCatalogParts } from "@/lib/catalog-store";
+import getMongoClient from "@/lib/mongodb";
+
+// ============================================================
+// Interface do registro de uma peça (formulário)
+// ============================================================
+interface PecaForm {
+  nome: string;
+  serialNumber?: string;
+  fabricante: string;
+  localidade: string;
+  tecnicoResponsavel: string;
+  dataChegada: string;
+  situacaoAtual: string;
+  imagemUrl?: string;
+  dataSaida?: string;
+}
+
+// ============================================================
+// Interface do documento salvo (com os campos extras do banco)
+// ============================================================
+interface PecaDocument {
+  id: number;
+  nome: string;
+  serialNumber?: string;
+  fabricante: string;
+  localidade: string;
+  tecnicoResponsavel: string;
+  dataChegada: string;
+  situacaoAtual: string;
+  imagemUrl?: string;
+  dataSaida?: string;
+  qc: string;
+  createdAt: string;
+  reports?: RepairReport[];
+  history?: PieceHistory[];
+}
+
+export interface RepairReport {
+  id: string;
+  responsavelReparo: string;
+  descricaoReparo: string;
+  situacaoAtual: string;
+  createdAt: string;
+}
+
+export interface PieceHistory {
+  id: string;
+  action: "created" | "updated" | "report";
+  details: string;
+  userName: string;
+  createdAt: string;
+}
+
+const PIECES_DATABASE = process.env.MONGODB_DATABASE_PECAS || "pecas";
+const PIECES_COLLECTION = "pecasdb";
+const sectorOnlyRoles = ["lab.eletronica", "lab.elétrica", "cereco"];
+
+async function piecesCollection() {
+  const client = await getMongoClient();
+  return client.db(PIECES_DATABASE).collection<PecaDocument>(PIECES_COLLECTION);
+}
+
+// ============================================================
+// Função de validação (Zod não está disponível aqui — validação manual)
+// ============================================================
+function validatePiece(piece: PecaForm): string[] {
+  const errors: string[] = [];
+  const requiredFields: Array<[keyof PecaForm, string]> = [
+    ["nome", "Nome"],
+    ["fabricante", "Fabricante"],
+    ["tecnicoResponsavel", "Técnico Responsável"],
+  ];
+
+  for (const [field, label] of requiredFields) {
+    if (!piece[field] || !piece[field].toString().trim()) {
+      errors.push(`O campo ${label} é obrigatório`);
+    }
+  }
+
+  // Validação de data ou data e hora no formato aceito pelo input datetime-local.
+  if (piece.dataChegada) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/;
+    if (!dateRegex.test(piece.dataChegada)) {
+      errors.push("Data de chegada deve estar no formato YYYY-MM-DDTHH:mm");
+    }
+  }
+
+  return errors;
+}
+
+// ============================================================
+// Geração do QC usando a data, o serial (quando informado) e o ID da peça.
+// ============================================================
+function generateQC(piece: PecaForm, id: number): string {
+  const dataPart = piece.dataChegada.slice(0, 10).replace(/-/g, "/");
+  const serial = piece.serialNumber?.trim().replace(/[^a-zA-Z0-9]/g, "");
+  return serial ? `${dataPart}-${serial}-${id}` : `${dataPart}-${id}`;
+}
+
+function getCurrentDateTimeLocal(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+// ============================================================
+// GET /api/pecas — lista todas as peças salvas no MongoDB
+// ============================================================
+export async function GET(request: NextRequest) {
+  try {
+    const collection = await piecesCollection();
+    const pieces = await collection.find({}).sort({ id: 1 }).toArray();
+
+    const sessionUser = await getSessionUser();
+    const role = sessionUser?.role.trim().toLowerCase();
+    const needsSectorFilter = Boolean(role && sectorOnlyRoles.includes(role));
+    const customParts = needsSectorFilter ? await getCustomCatalogParts() : [];
+    const sectorPieces = needsSectorFilter
+      ? pieces.filter((piece) => getSetorForComponente(piece.nome, customParts) === normalizeSetor(role))
+      : pieces;
+
+    if (request.nextUrl.searchParams.get("reports") !== "visible") {
+      return NextResponse.json(sectorPieces, { status: 200 });
+    }
+
+    const user = sessionUser;
+    if (!user) {
+      return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 401 });
+    }
+
+    const canViewAllReports = user.role.trim().toLowerCase() === "enc";
+    const currentUserName = user.name.trim().toLowerCase();
+    const visiblePieces = canViewAllReports
+      ? sectorPieces
+      : sectorPieces.map((piece) => ({
+          ...piece,
+          reports: piece.reports?.filter(
+            (report) => report.responsavelReparo.trim().toLowerCase() === currentUserName,
+          ),
+        }));
+
+    return NextResponse.json(visiblePieces, { status: 200 });
+  } catch (err) {
+    console.error("[GET /api/pecas] falha ao ler MongoDB:", err);
+    return NextResponse.json(
+      { success: false, error: "Não foi possível listar as peças" },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================
+// POST /api/pecas — cria uma nova peça e salva no MongoDB
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!canManagePieces(user?.role)) {
+      return NextResponse.json({ erro: "Entrada não autorizada" }, { status: 403 });
+    }
+
+    const piece = (await request.json()) as PecaForm;
+    piece.dataChegada = piece.dataChegada || getCurrentDateTimeLocal();
+
+    // validação
+    const errors = validatePiece(piece);
+    if (errors.length) {
+      return NextResponse.json({ erro: errors.join('; ') }, { status: 400 });
+    }
+
+    const collection = await piecesCollection();
+    const lastPiece = await collection.findOne({}, { sort: { id: -1 } });
+    const nextId = (lastPiece?.id ?? 0) + 1;
+    const qc = generateQC(piece, nextId);
+    const now = new Date().toISOString();
+    const history: PieceHistory = {
+      id: randomUUID(),
+      action: "created",
+      details: "chamado aberto",
+      userName: user?.name || "Usuário desconhecido",
+      createdAt: now,
+    };
+
+    const doc: PecaDocument = {
+      id: nextId,
+      nome: piece.nome,
+      serialNumber: piece.serialNumber,
+      fabricante: piece.fabricante,
+      localidade: piece.localidade,
+      tecnicoResponsavel: piece.tecnicoResponsavel,
+      dataChegada: piece.dataChegada,
+      situacaoAtual: piece.situacaoAtual,
+      imagemUrl: piece.imagemUrl,
+      dataSaida: piece.dataSaida,
+      qc,
+      createdAt: now,
+      history: [history],
+    };
+
+    await collection.insertOne(doc);
+
+    // Retorna o QC para o cliente (frontend espera data.qc) e o objeto criado
+    return NextResponse.json({ success: true, qc, peca: doc }, { status: 201 });
+  } catch (err) {
+    console.error('[POST /api/pecas] erro ao salvar no MongoDB:', err);
+    return NextResponse.json({ success: false, erro: 'Não foi possível salvar a peça' }, { status: 500 });
+  }
+}
+
+// ============================================================
+// PUT /api/pecas — atualiza uma peça existente
+// ============================================================
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!canManagePieces(user?.role)) {
+      return NextResponse.json({ erro: "Entrada não autorizada" }, { status: 403 });
+    }
+
+    const input = (await request.json()) as Partial<PecaDocument>;
+    const id = Number(input.id);
+
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ erro: "ID da peça inválido" }, { status: 400 });
+    }
+
+    const collection = await piecesCollection();
+    const current = await collection.findOne({ id });
+
+    if (!current) {
+      return NextResponse.json({ erro: "Peça não encontrada" }, { status: 404 });
+    }
+
+    const updated: PecaDocument = {
+      id: current.id,
+      nome: input.nome ?? current.nome,
+      serialNumber: input.serialNumber ?? current.serialNumber,
+      fabricante: input.fabricante ?? current.fabricante,
+      localidade: input.localidade ?? current.localidade,
+      tecnicoResponsavel: input.tecnicoResponsavel ?? current.tecnicoResponsavel,
+      dataChegada: input.dataChegada ?? current.dataChegada,
+      situacaoAtual: input.situacaoAtual ?? current.situacaoAtual,
+      imagemUrl: input.imagemUrl ?? current.imagemUrl,
+      dataSaida: input.dataSaida ?? current.dataSaida,
+      qc: current.qc,
+      createdAt: current.createdAt,
+      reports: current.reports,
+      history: current.history,
+    };
+    const errors = validatePiece(updated);
+
+    if (errors.length) {
+      return NextResponse.json({ erro: errors.join("; ") }, { status: 400 });
+    }
+
+    const changedFields = [
+      ["Nome", current.nome, updated.nome],
+      ["Serial Number", current.serialNumber, updated.serialNumber],
+      ["Fabricante", current.fabricante, updated.fabricante],
+      ["Localidade", current.localidade, updated.localidade],
+      ["Técnico responsável", current.tecnicoResponsavel, updated.tecnicoResponsavel],
+      ["Data de chegada", current.dataChegada, updated.dataChegada],
+      ["Data de saída", current.dataSaida, updated.dataSaida],
+      ["Situação atual", current.situacaoAtual, updated.situacaoAtual],
+    ]
+      .filter(([, previous, next]) => previous !== next)
+      .map(([label, previous, next]) => `${label}: ${previous || "vazio"} → ${next || "vazio"}`);
+    const history: PieceHistory = {
+      id: randomUUID(),
+      action: "updated",
+      details: changedFields.length ? `Alterações: ${changedFields.join("; ")}` : "Dados revisados sem alterações",
+      userName: user?.name || "Usuário desconhecido",
+      createdAt: new Date().toISOString(),
+    };
+    updated.history = [...(current.history ?? []), history];
+
+    await collection.updateOne({ id }, { $set: updated });
+
+    return NextResponse.json({ success: true, peca: updated }, { status: 200 });
+  } catch (err) {
+    console.error("[PUT /api/pecas] erro ao atualizar:", err);
+    return NextResponse.json({ success: false, erro: "Não foi possível atualizar a peça" }, { status: 500 });
+  }
+}
+
+// ============================================================
+// DELETE /api/pecas — remove uma peça existente
+// ============================================================
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!canDeletePecas(user?.role)) {
+      return NextResponse.json({ erro: "Entrada não autorizada" }, { status: 403 });
+    }
+
+    const id = Number(request.nextUrl.searchParams.get("id"));
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ erro: "ID da peça inválido" }, { status: 400 });
+    }
+
+    const collection = await piecesCollection();
+    const result = await collection.deleteOne({ id });
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ erro: "Peça não encontrada" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/pecas] erro ao remover:", err);
+    return NextResponse.json({ erro: "Não foi possível remover a peça." }, { status: 500 });
+  }
+}
