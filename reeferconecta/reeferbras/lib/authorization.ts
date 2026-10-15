@@ -2,12 +2,11 @@ export const pieceManagementRoles = ["almox", "dev", "enc", "master"] as const;
 export const pedidoSectorRoles = ["lab.eletronica", "lab.elétrica", "cereco"] as const;
 export const teamsAccessRoles = ["dev", "enc", "master"] as const;
 export const chamadosViewAllRoles = ["dev"] as const;
-export const reportNotificationRoles = ["enc", "almox"] as const;
+export const reportNotificationRoles = ["enc", "almox","master"] as const;
 export const employeeRoles = [
   "almox",
   "dev",
   "enc",
-  "master",
   "cereco",
   "lab.eletronica",
   "lab.elétrica",
