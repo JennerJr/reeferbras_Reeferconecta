@@ -16,7 +16,7 @@ type RecentOkReport = { id: string; pieceName: string; responsibleName: string; 
 const piecesDatabase = process.env.MONGODB_DATABASE_PECAS || "pecas";
 const reportsDataBase = process.env.MONGODB_DATABASE_REPORTS || "reports";
 const encFilterableSectors = ["lab.elétrica", "lab.eletronica", "cereco"] as const;
-const masterFilterableSectors = ["lab.elétrica", "lab.eletronica", "cereco"] as const;
+const masterFilterableSectors = ["lab.elétrica", "lab.eletronica", "cereco","almox"] as const;
 const periods = ["all", "1-month", "3-months", "6-months", "1-year", "custom"] as const;
 
 function formatSector(sector: string) {
